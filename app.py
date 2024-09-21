@@ -91,7 +91,7 @@ def handle_merge_event(payload):
             'author': author,
             'from_branch': from_branch,
             'to_branch': to_branch,
-            'timestamp': datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')  # Convert timestamp
+            'timestamp': datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ') 
         }
 
         # Insert the merge event into the MongoDB collection
