@@ -20,7 +20,7 @@ def hello_world():
 
 @app.route('/webhook',methods=['POST'])
 def handle_webhook():
-    event_type=request.headers.get('x-Github_Events')
+    event_type=request.headers.get('X-Github-Event')
     payload=request.json
 
     # Handle "push" event
