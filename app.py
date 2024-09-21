@@ -1,14 +1,17 @@
 from datetime import datetime
 from flask import Flask, request, jsonify, abort
 from pymongo import MongoClient
+from flask_cors import CORS
 
 from config import Config
 
 app=Flask(__name__)
+CORS(app)
 app.config.from_object(Config)
 
 client=MongoClient(app.config['MONGO_URI'])
 db=client.github_events
+events_collection = db.events 
 
 @app.route("/")
 def hello_world():
@@ -32,7 +35,7 @@ def handle_webhook():
     return jsonify({'msg': 'Event received'}), 200
 
 def handle_push_event(payload):
-    """Handles GitHub push events."""
+    #Handles GitHub push events
     author = payload['pusher']['name']
     to_branch = payload['ref'].split('/')[-1]
     timestamp = payload['head_commit']['timestamp']
@@ -49,7 +52,7 @@ def handle_push_event(payload):
 
 
 def handle_pull_request_event(payload):
-    """Handles GitHub pull request events."""
+    #Handles GitHub pull request events
     action = payload['action']
     if action not in ['opened', 'closed', 'merged']:
         return  # Only process specific actions
@@ -71,4 +74,13 @@ def handle_pull_request_event(payload):
     # Insert into MongoDB
     db.events.insert_one(event_data)
 
-    
+@app.route('/api/events', methods=['GET'])
+def get_events():
+    # Fetches the latest events from MongoDB
+    events = list(db.events.find().sort('timestamp', -1).limit(100))
+    for event in events:
+        event['_id'] = str(event['_id'])  # Convert ObjectId to string
+    return jsonify(events), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=app.config['PORT'], debug=app.config['DEBUG'])
