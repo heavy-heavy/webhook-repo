@@ -28,7 +28,10 @@ def handle_webhook():
         handle_push_event(payload)
     # Handle "pull_request" event
     elif event_type == 'pull_request':
-        handle_pull_request_event(payload)
+        if payload['action'] == 'opened':
+            handle_pull_request_event(payload)
+        elif payload['action'] == 'closed' and payload['pull_request']['merged']:
+            handle_merge_event(payload)  # Call merge handler if the pull request is merged
     else:
         return jsonify({'msg': 'Event not processed'}), 200
 
@@ -73,6 +76,27 @@ def handle_pull_request_event(payload):
 
     # Insert into MongoDB
     db.events.insert_one(event_data)
+
+def handle_merge_event(payload):
+    #Handles GitHub merge events that occur via pull requests.
+    author = payload['pull_request']['user']['login']  # Author of the pull request
+    from_branch = payload['pull_request']['head']['ref']  # Source branch being merged
+    to_branch = payload['pull_request']['base']['ref']  # Target branch for the merge
+    timestamp = payload['pull_request']['merged_at']  # Timestamp of the merge
+
+    # Check if the action is 'merged' (specifically looking for merged pull requests)
+    if payload['action'] == 'closed' and payload['pull_request']['merged']:
+        event_data = {
+            'type': 'merge',
+            'author': author,
+            'from_branch': from_branch,
+            'to_branch': to_branch,
+            'timestamp': datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')  # Convert timestamp
+        }
+
+        # Insert the merge event into the MongoDB collection
+        db.events.insert_one(event_data)
+
 
 @app.route('/api/events', methods=['GET'])
 def get_events():
